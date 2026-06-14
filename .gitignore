@@ -1,0 +1,11 @@
+node_modules
+dist
+.wrangler
+*.local
+.env
+.env.*
+.dev.vars
+package-lock.json
+!.env.example
+*.gen.ts
+.DS_Store

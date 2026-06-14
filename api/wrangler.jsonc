@@ -1,0 +1,26 @@
+{
+	"name": "survey-builder-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2024-12-05",
+	"compatibility_flags": ["nodejs_compat"],
+
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "survey-builder-db",
+			"database_id": "824ee82f-d028-4d0f-97e5-cd18c464e1ba",
+			"migrations_dir": "migrations"
+		}
+	],
+
+	"kv_namespaces": [
+		{
+			"binding": "SESSIONS",
+			"id": "06eed1aa740741988ef1abb2920e8606"
+		}
+	],
+
+	"vars": {
+		"FRONTEND_URL": "http://localhost:5173"
+	}
+}
