@@ -365,10 +365,4 @@ Every file in this repo has been read, understood, and is defensible line by lin
 
 ---
 
-## What I'd Do With Another Week
 
-1. **Font picker** — let owners choose a Google Font for their survey. The schema already has `primary_color`; adding `font_family` is one column and one `<link>` tag on the public page.
-2. **Branching / conditional questions** — show/hide questions based on previous answers. The DB schema supports it with a `conditions` JSON column on questions; needs a client-side evaluator.
-3. **Real-time response counter** — live update the dashboard response count when a new submission comes in, using Cloudflare Durable Objects or polling.
-4. **Better error boundaries** — currently errors surface as toasts; proper React error boundaries per route would be more resilient.
-5. **Logo file upload** — needs Cloudflare R2 with a payment method on the account. The route handler was written and then removed; adding it back is straightforward once R2 is enabled.
