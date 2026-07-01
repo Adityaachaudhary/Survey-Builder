@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { Resend } from "resend";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import { createUser, findUserByEmail } from "../db/queries";
 import type { Env } from "../types";
 
@@ -11,28 +13,118 @@ function generateId(): string {
 }
 
 function generateOTP(): string {
-	return Math.floor(100000 + Math.random() * 900000).toString();
+	// Use Web Crypto API for cryptographically secure randomness.
+	// Math.random() is pseudo-random and predictable — never use it for
+	// security-sensitive tokens like OTPs, passwords, or session IDs.
+	const array = new Uint32Array(1);
+	crypto.getRandomValues(array);
+	// Clamp to 6 digits: take value modulo 900000, then add 100000
+	// to guarantee it's always exactly 6 digits (100000–999999)
+	return (100000 + (array[0] % 900000)).toString();
 }
 
-// POST /api/auth/send-otp
-authRouter.post("/send-otp", async (c) => {
-	const body = await c.req.json<{ email: string }>();
-	const email = body.email?.trim().toLowerCase();
+// ─── Rate limiting helpers ────────────────────────────────────────────────────
+//
+// We use KV to track two things:
+//
+//   1. send-otp rate limit  — key: `rl:send:{email}`
+//      Max 5 sends per hour per email. Prevents email flooding / Resend quota drain.
+//
+//   2. verify-otp attempts  — key: `rl:verify:{email}`
+//      Max 5 attempts per OTP window. Prevents brute-force of the 6-digit code.
+//      Counter is deleted when OTP is deleted (success or new OTP issued).
+//
+// KV TTL handles automatic expiry — no cleanup job needed.
 
-	if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-		return c.json({ error: "Valid email required" }, 400);
-	}
+const SEND_LIMIT = 5;       // max OTP sends per email per hour
+const SEND_WINDOW = 3600;   // 1 hour in seconds
+const VERIFY_LIMIT = 5;     // max verify attempts before lockout
+const VERIFY_WINDOW = 600;  // same as OTP TTL (10 minutes)
+
+async function getSendCount(kv: KVNamespace, email: string): Promise<number> {
+	const val = await kv.get(`rl:send:${email}`);
+	return val ? parseInt(val, 10) : 0;
+}
+
+async function incrementSendCount(kv: KVNamespace, email: string): Promise<void> {
+	const current = await getSendCount(kv, email);
+	// Reset TTL on every increment so the window is always 1 hour from first send
+	await kv.put(`rl:send:${email}`, String(current + 1), {
+		expirationTtl: SEND_WINDOW,
+	});
+}
+
+async function getVerifyAttempts(kv: KVNamespace, email: string): Promise<number> {
+	const val = await kv.get(`rl:verify:${email}`);
+	return val ? parseInt(val, 10) : 0;
+}
+
+async function incrementVerifyAttempts(kv: KVNamespace, email: string): Promise<void> {
+	const current = await getVerifyAttempts(kv, email);
+	// TTL matches OTP window — counter auto-expires when OTP expires
+	await kv.put(`rl:verify:${email}`, String(current + 1), {
+		expirationTtl: VERIFY_WINDOW,
+	});
+}
+
+async function resetVerifyAttempts(kv: KVNamespace, email: string): Promise<void> {
+	await kv.delete(`rl:verify:${email}`);
+}
+
+// ─── Validation Schemas ──────────────────────────────────────────────────────
+
+const sendOtpSchema = z.object({
+	email: z.string().email("Valid email required"),
+});
+
+const verifyOtpSchema = z.object({
+	email: z.string().email("Valid email required"),
+	otp: z.string().min(1, "OTP required"),
+});
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
+// POST /api/auth/send-otp
+authRouter.post(
+	"/send-otp",
+	zValidator("json", sendOtpSchema, (result, c) => {
+		if (!result.success) {
+			return c.json({ error: "Valid email required" }, 400);
+		}
+		return;
+	}),
+	async (c) => {
+		const body = c.req.valid("json");
+		const email = body.email.trim().toLowerCase();
 
 	const resendApiKey = c.env.RESEND_API_KEY?.trim();
 	if (!resendApiKey) {
 		return c.json({ error: "Resend API key is not configured" }, 500);
 	}
 
+	// ── Rate limit check ──
+	// Block if this email has requested too many OTPs in the past hour.
+	// We return 429 (Too Many Requests) — the standard HTTP status for rate limiting.
+	const sendCount = await getSendCount(c.env.SESSIONS, email);
+	if (sendCount >= SEND_LIMIT) {
+		return c.json(
+			{ error: "Too many code requests. Please wait before trying again." },
+			429,
+		);
+	}
+
 	const otp = generateOTP();
 	const otpKey = `otp:${email}`;
 
-	// Store OTP in KV with 10 minute expiry
-	await c.env.SESSIONS.put(otpKey, otp, { expirationTtl: 600 });
+	// Store OTP in KV with 10 minute expiry.
+	// Also reset verify attempts — a new OTP means a fresh attempt window.
+	await Promise.all([
+		c.env.SESSIONS.put(otpKey, otp, { expirationTtl: 600 }),
+		resetVerifyAttempts(c.env.SESSIONS, email),
+	]);
+
+	// Increment send counter after issuing OTP
+	await incrementSendCount(c.env.SESSIONS, email);
 
 	const resend = new Resend(resendApiKey);
 
@@ -61,23 +153,53 @@ authRouter.post("/send-otp", async (c) => {
 });
 
 // POST /api/auth/verify-otp
-authRouter.post("/verify-otp", async (c) => {
-	const body = await c.req.json<{ email: string; otp: string }>();
-	const email = body.email?.trim().toLowerCase();
-	const otp = body.otp?.trim();
+authRouter.post(
+	"/verify-otp",
+	zValidator("json", verifyOtpSchema, (result, c) => {
+		if (!result.success) {
+			return c.json({ error: "Email and OTP required" }, 400);
+		}
+		return;
+	}),
+	async (c) => {
+		const body = c.req.valid("json");
+		const email = body.email.trim().toLowerCase();
+		const otp = body.otp.trim();
 
-	if (!email || !otp) {
-		return c.json({ error: "Email and OTP required" }, 400);
+	// ── Brute-force protection ──
+	// Check attempt count BEFORE looking up the OTP.
+	// This way an attacker cannot enumerate codes even if they
+	// somehow know an OTP exists — they get locked out first.
+	const attempts = await getVerifyAttempts(c.env.SESSIONS, email);
+	if (attempts >= VERIFY_LIMIT) {
+		return c.json(
+			{ error: "Too many incorrect attempts. Please request a new code." },
+			429,
+		);
 	}
 
 	const storedOtp = await c.env.SESSIONS.get(`otp:${email}`);
 
 	if (!storedOtp || storedOtp !== otp) {
-		return c.json({ error: "Invalid or expired code" }, 401);
+		// Increment attempt counter on every failure
+		await incrementVerifyAttempts(c.env.SESSIONS, email);
+		const remaining = VERIFY_LIMIT - (attempts + 1);
+		return c.json(
+			{
+				error: "Invalid or expired code",
+				...(remaining > 0 && { hint: `${remaining} attempt${remaining === 1 ? "" : "s"} remaining` }),
+			},
+			401,
+		);
 	}
 
-	// Invalidate OTP
-	await c.env.SESSIONS.delete(`otp:${email}`);
+	// ── Success path ──
+	// Delete OTP and reset attempt counter atomically.
+	// OTP is now invalid — cannot be reused even within the 10-minute window.
+	await Promise.all([
+		c.env.SESSIONS.delete(`otp:${email}`),
+		resetVerifyAttempts(c.env.SESSIONS, email),
+	]);
 
 	// Find or create user
 	let user = await findUserByEmail(c.env.DB, email);

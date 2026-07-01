@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge, Card, CardContent } from "@/components/ui/primitives";
 import { Label } from "@/components/ui/primitives";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/useToast";
 import { type SurveyWithCount, api } from "@/lib/api";
@@ -130,23 +131,38 @@ export function DashboardPage() {
 
 				{/* Survey list */}
 				{loading ? (
-					<div className="flex items-center justify-center py-20">
-						<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+					<div className="grid gap-3">
+						{[1, 2, 3].map((i) => (
+							<Card key={i} className="animate-fade-in">
+								<CardContent className="p-0">
+									<div className="flex items-center gap-4 p-5">
+										<Skeleton className="w-2 self-stretch rounded-full shrink-0 min-h-[48px]" />
+										<div className="flex-1 space-y-2">
+											<Skeleton className="h-4 w-48" />
+											<Skeleton className="h-3 w-32" />
+										</div>
+										<Skeleton className="h-8 w-24 rounded-md" />
+									</div>
+								</CardContent>
+							</Card>
+						))}
 					</div>
 				) : surveys.length === 0 ? (
-					<div className="text-center py-20 animate-fade-in">
-						<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-							<FileText className="w-8 h-8 text-muted-foreground" />
-						</div>
-						<h3 className="font-semibold text-lg mb-2">No surveys yet</h3>
-						<p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
-							Create your first survey and start collecting responses in minutes.
-						</p>
-						<Button onClick={() => setShowCreateDialog(true)} className="gap-2">
-							<Plus className="w-4 h-4" />
-							Create your first survey
-						</Button>
-					</div>
+					<Card className="border-dashed border-2 bg-muted/30">
+						<CardContent className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
+							<div className="w-16 h-16 bg-background rounded-2xl flex items-center justify-center shadow-sm border mb-6">
+								<LayoutGrid className="w-8 h-8 text-primary" />
+							</div>
+							<h3 className="font-bold text-2xl mb-2 text-foreground">No surveys yet</h3>
+							<p className="text-muted-foreground text-base mb-8 max-w-sm mx-auto">
+								Create your first survey and start collecting beautiful, branded responses in minutes.
+							</p>
+							<Button size="lg" onClick={() => setShowCreateDialog(true)} className="gap-2 px-8">
+								<Plus className="w-5 h-5" />
+								Create Survey
+							</Button>
+						</CardContent>
+					</Card>
 				) : (
 					<div className="grid gap-3">
 						{surveys.map((survey) => (
@@ -187,7 +203,7 @@ export function DashboardPage() {
 										</div>
 
 										{/* Actions */}
-										<div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+										<div className="flex items-center gap-1 transition-opacity">
 											<a
 												href={`/s/${survey.slug}`}
 												target="_blank"

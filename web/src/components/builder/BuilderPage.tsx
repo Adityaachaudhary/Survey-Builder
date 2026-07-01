@@ -30,7 +30,10 @@ import {
 	Loader2,
 	Paintbrush,
 	Plus,
+	QrCode,
+	X,
 } from "lucide-react";
+import QRCodeLib from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrandingPanel } from "./BrandingPanel";
 import { QuestionCard } from "./QuestionCard";
@@ -53,6 +56,8 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 	const [copiedLink, setCopiedLink] = useState(false);
 	const [editingTitle, setEditingTitle] = useState(false);
 	const [titleValue, setTitleValue] = useState("");
+	const [showQr, setShowQr] = useState(false);
+	const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 	const titleRef = useRef<HTMLInputElement>(null);
 
 	const sensors = useSensors(
@@ -187,6 +192,20 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 		toast({ title: "Link copied", description: url, variant: "default" });
 	};
 
+	const handleShowQr = async () => {
+		if (!survey) return;
+		if (!qrDataUrl) {
+			const url = `${window.location.origin}/s/${survey.slug}`;
+			const dataUrl = await QRCodeLib.toDataURL(url, {
+				width: 240,
+				margin: 2,
+				color: { dark: "#18181b", light: "#ffffff" },
+			});
+			setQrDataUrl(dataUrl);
+		}
+		setShowQr((v) => !v);
+	};
+
 	if (loading) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
@@ -269,6 +288,37 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 						)}
 						{copiedLink ? "Copied" : "Copy link"}
 					</Button>
+
+					{/* QR Code button + popover */}
+					<div className="relative">
+						<Button
+							variant="outline"
+							size="icon"
+							className="h-8 w-8"
+							onClick={() => void handleShowQr()}
+							title="Show QR code"
+						>
+							<QrCode className="w-3.5 h-3.5" />
+						</Button>
+						{showQr && qrDataUrl && (
+							<div className="absolute right-0 top-10 z-50 bg-white border rounded-2xl shadow-xl p-4 flex flex-col items-center gap-3 animate-fade-in">
+								<div className="flex items-center justify-between w-full">
+									<p className="text-xs font-semibold text-foreground">Scan to open survey</p>
+									<button
+										type="button"
+										onClick={() => setShowQr(false)}
+										className="text-muted-foreground hover:text-foreground transition-colors"
+									>
+										<X className="w-4 h-4" />
+									</button>
+								</div>
+								<img src={qrDataUrl} alt="QR Code" className="w-40 h-40 rounded-lg" />
+								<p className="text-xs text-muted-foreground text-center max-w-[160px] truncate">
+									{shareUrl}
+								</p>
+							</div>
+						)}
+					</div>
 
 					<a href={shareUrl} target="_blank" rel="noreferrer">
 						<Button variant="outline" size="icon" className="h-8 w-8">

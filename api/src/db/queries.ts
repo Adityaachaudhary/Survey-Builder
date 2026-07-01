@@ -76,6 +76,19 @@ export async function getSurveysByUserId(db: D1Database, userId: string): Promis
 	return result.results;
 }
 
+export async function getSurveysWithResponseCounts(
+	db: D1Database,
+	userId: string,
+): Promise<(Survey & { response_count: number })[]> {
+	const result = await db
+		.prepare(
+			"SELECT s.*, COUNT(r.id) as response_count FROM surveys s LEFT JOIN responses r ON s.id = r.survey_id WHERE s.user_id = ? GROUP BY s.id ORDER BY s.created_at DESC",
+		)
+		.bind(userId)
+		.all<Survey & { response_count: number }>();
+	return result.results;
+}
+
 export async function getSurveyById(db: D1Database, id: string): Promise<Survey | null> {
 	return db.prepare("SELECT * FROM surveys WHERE id = ?").bind(id).first<Survey>();
 }

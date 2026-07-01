@@ -116,6 +116,23 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 		return { type: "text", answers: allAnswers };
 	};
 
+	// Build a 30-day daily response timeline from timestamps
+	const getTimeline = () => {
+		if (!data) return [];
+		const days: { label: string; count: number }[] = [];
+		const now = Date.now();
+		for (let i = 29; i >= 0; i--) {
+			const dayStart = now - i * 86400000;
+			const dayEnd = dayStart + 86400000;
+			const label = new Date(dayStart).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+			const count = data.responses.filter(
+				(r) => r.submitted_at * 1000 >= dayStart && r.submitted_at * 1000 < dayEnd,
+			).length;
+			days.push({ label, count });
+		}
+		return days;
+	};
+
 	if (loading) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
@@ -174,7 +191,7 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 
 			<main className="max-w-5xl mx-auto px-6 py-8">
 				{/* Stats row */}
-				<div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+				<div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
 					<StatCard
 						icon={<Users className="w-4 h-4" />}
 						label="Total responses"
@@ -201,6 +218,11 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 						color={primaryColor}
 					/>
 				</div>
+
+				{/* Response timeline chart */}
+				{total > 0 && (
+					<TimelineChart timeline={getTimeline()} color={primaryColor} />
+				)}
 
 				{total === 0 ? (
 					<div className="text-center py-20 bg-white rounded-xl border animate-fade-in">
@@ -363,6 +385,48 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
+
+function TimelineChart({
+	timeline,
+	color,
+}: { timeline: { label: string; count: number }[]; color: string }) {
+	const maxCount = Math.max(...timeline.map((d) => d.count), 1);
+	// Show only every 5th label to avoid crowding
+	return (
+		<div className="bg-white rounded-xl border p-5 mb-6">
+			<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+				Responses — Last 30 Days
+			</p>
+			<div className="flex items-end gap-px h-24">
+				{timeline.map((day, i) => (
+					<div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+						{/* Tooltip */}
+						{day.count > 0 && (
+							<div className="absolute bottom-full mb-1 hidden group-hover:flex bg-gray-900 text-white text-xs rounded px-1.5 py-0.5 whitespace-nowrap z-10 pointer-events-none flex-col items-center">
+								<span>{day.count} response{day.count !== 1 ? "s" : ""}</span>
+								<span className="text-gray-400">{day.label}</span>
+							</div>
+						)}
+						<div
+							className="w-full rounded-t-sm transition-all"
+							style={{
+								height: `${Math.max((day.count / maxCount) * 100, day.count > 0 ? 8 : 2)}%`,
+								backgroundColor: day.count > 0 ? color : "#e5e7eb",
+								opacity: day.count > 0 ? 1 : 0.5,
+							}}
+						/>
+					</div>
+				))}
+			</div>
+			{/* X-axis labels: first, middle, last */}
+			<div className="flex justify-between mt-2">
+				<span className="text-xs text-muted-foreground">{timeline[0]?.label}</span>
+				<span className="text-xs text-muted-foreground">{timeline[14]?.label}</span>
+				<span className="text-xs text-muted-foreground">{timeline[29]?.label}</span>
+			</div>
+		</div>
+	);
+}
 
 function StatCard({
 	icon,
