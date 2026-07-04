@@ -12,13 +12,14 @@ const app = new Hono<{ Bindings: Env }>();
 app.use(
 	"*",
 	cors({
-		origin: (origin, c) => {
-			const allowedOrigins = [
-				c.env.FRONTEND_URL,
-				"http://localhost:5173",
-				"https://localhost:5173",
-			];
-			return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+		origin: (origin) => {
+			if (!origin) return null;
+			if (
+				origin === "http://localhost:5173" ||
+				origin === "https://localhost:5173" ||
+				origin.endsWith(".vercel.app")
+			) return origin;
+			return null;
 		},
 		credentials: true,
 		allowHeaders: ["Content-Type", "Authorization"],
