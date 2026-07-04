@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link, Navigate, createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, BarChart2, GripVertical, LayoutGrid, Star, Type } from "lucide-react";
+import { ArrowRight, BarChart2, GripVertical, LayoutGrid, Paintbrush, Share2, Star, Type } from "lucide-react";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,
@@ -20,23 +20,26 @@ function LandingPage() {
 	return (
 		<div className="min-h-screen bg-background flex flex-col overflow-hidden">
 			{/* Navbar */}
-			<header className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full border-b border-border/40">
+			<header className="px-4 sm:px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full border-b border-border/40">
 				<div className="flex items-center gap-2">
 					<div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
 						<LayoutGrid className="w-4 h-4 text-primary" />
 					</div>
 					<span className="font-bold tracking-tight">Survey Builder</span>
 				</div>
+				<Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+					Sign in
+				</Link>
 			</header>
 
 			{/* Hero */}
-			<main className="flex flex-col items-center px-4 pt-16 pb-8">
-				<div className="space-y-6 max-w-3xl text-center animate-fade-in">
-					<h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 pb-2">
+			<main className="flex flex-col items-center px-4 pt-10 sm:pt-16 pb-8">
+				<div className="space-y-5 sm:space-y-6 max-w-3xl text-center animate-fade-in">
+					<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-gray-900 pb-2">
 						Surveys that feel like your brand.
 					</h1>
-					<p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-						Build beautiful surveys, apply your visual identity, and share a link instantly. Stop using boring, generic forms.
+					<p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+						Build beautiful surveys, apply your visual identity, and share a link instantly.
 					</p>
 					<div className="pt-2 flex items-center justify-center gap-4">
 						<Link
@@ -46,10 +49,59 @@ function LandingPage() {
 							Get Started <ArrowRight className="w-4 h-4" />
 						</Link>
 					</div>
+					{/* Feature pills */}
+					<div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+						{[
+							{ icon: <LayoutGrid className="w-3 h-3" />, label: "5 question types" },
+							{ icon: <Paintbrush className="w-3 h-3" />, label: "Custom branding" },
+							{ icon: <BarChart2 className="w-3 h-3" />, label: "Response analytics" },
+							{ icon: <Share2 className="w-3 h-3" />, label: "Shareable link + QR" },
+						].map(({ icon, label }) => (
+							<span
+								key={label}
+								className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full border"
+							>
+								{icon}{label}
+							</span>
+						))}
+					</div>
 				</div>
 
-				{/* UI Mockup */}
-				<div className="mt-16 w-full max-w-5xl rounded-2xl border shadow-2xl overflow-hidden animate-slide-in bg-white">
+				{/* Mobile mockup — simplified card only */}
+				<div className="mt-10 w-full max-w-sm sm:hidden animate-slide-in">
+					<div className="rounded-2xl border shadow-xl overflow-hidden bg-white">
+						<div className="h-1.5 w-full bg-gray-700" />
+						<div className="p-5 space-y-4">
+							<div className="flex items-center gap-2">
+								<div className="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center">
+									<LayoutGrid className="w-3 h-3 text-white" />
+								</div>
+								<span className="text-xs font-semibold text-indigo-700">Customer NPS Survey</span>
+							</div>
+							<p className="text-sm font-semibold text-gray-800">What's your name?</p>
+							<div className="h-9 rounded-lg border bg-gray-50 px-3 flex items-center text-xs text-gray-400">
+								Type your answer here…
+							</div>
+							<p className="text-sm font-semibold text-gray-800">Rate your experience</p>
+							<div className="flex gap-2">
+								{[1,2,3,4,5].map((n) => (
+									<div key={n} className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center text-xs font-semibold ${ n === 4 ? "bg-indigo-600 border-indigo-600 text-white" : "border-gray-200 text-gray-400" }`}>{n}</div>
+								))}
+							</div>
+							<div className="flex justify-between items-center pt-1">
+								<div className="flex gap-1">
+									{[1,2,3].map((i) => (
+										<div key={i} className={`h-1.5 rounded-full ${i === 1 ? "w-6 bg-indigo-600" : "w-3 bg-gray-200"}`} />
+									))}
+								</div>
+								<div className="bg-indigo-600 text-white text-xs rounded-full px-4 py-1.5 font-medium">Submit →</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Desktop mockup — full 3-panel layout */}
+				<div className="mt-12 sm:mt-16 w-full max-w-5xl rounded-2xl border shadow-2xl overflow-hidden animate-slide-in bg-white hidden sm:block">
 					{/* Browser chrome */}
 					<div className="bg-gray-100 border-b px-4 py-3 flex items-center gap-2">
 						<div className="w-3 h-3 rounded-full bg-red-400" />
@@ -98,7 +150,7 @@ function LandingPage() {
 						</div>
 
 						{/* Main canvas */}
-						<div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white p-8">
+						<div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-8">
 							<div className="w-full max-w-md bg-white rounded-xl shadow-md border p-6 space-y-4">
 								<div className="flex items-center gap-2 mb-4">
 									<div className="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center">

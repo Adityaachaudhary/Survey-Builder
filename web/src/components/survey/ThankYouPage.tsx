@@ -40,6 +40,14 @@ export function ThankYouPage({ slug }: ThankYouPageProps) {
 						has been recorded. We appreciate your time.
 					</p>
 
+					<a
+						href={`/s/${slug}`}
+						className="inline-flex items-center gap-1.5 text-sm mt-6 px-4 py-2 rounded-full border hover:bg-muted transition-colors"
+						style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+					>
+						Fill out again
+					</a>
+
 					{data?.survey.logo_url && (
 						<img
 							src={data.survey.logo_url}

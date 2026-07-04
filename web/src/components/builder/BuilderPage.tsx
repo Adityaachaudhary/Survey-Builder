@@ -38,7 +38,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BrandingPanel } from "./BrandingPanel";
 import { QuestionCard } from "./QuestionCard";
 
-type ActiveTab = "questions" | "branding";
+type ActiveTab = "questions" | "branding" | "preview";
 
 interface BuilderPageProps {
 	surveyId: string;
@@ -58,6 +58,7 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 	const [titleValue, setTitleValue] = useState("");
 	const [showQr, setShowQr] = useState(false);
 	const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+	const [mobilePanel, setMobilePanel] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
 
 	const sensors = useSensors(
@@ -222,7 +223,7 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 		<div className="min-h-screen bg-gray-50/50 flex flex-col">
 			{/* Top bar */}
 			<header className="border-b bg-white sticky top-0 z-20">
-				<div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
+				<div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-3">
 					{/* Back */}
 					<Link
 						to="/dashboard"
@@ -231,6 +232,16 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 						<ArrowLeft className="w-4 h-4" />
 						<span className="hidden sm:block">Dashboard</span>
 					</Link>
+
+					{/* Mobile panel toggle */}
+					<button
+						type="button"
+						onClick={() => setMobilePanel((v) => !v)}
+						className="lg:hidden h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
+						title="Questions & Branding"
+					>
+						<LayoutGrid className="w-4 h-4 text-muted-foreground" />
+					</button>
 
 					<div className="w-px h-5 bg-border" />
 
@@ -279,7 +290,7 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 						variant="outline"
 						size="sm"
 						onClick={() => void copyShareLink()}
-						className="gap-1.5 hidden sm:flex"
+						className="gap-1.5 flex"
 					>
 						{copiedLink ? (
 							<Check className="w-3.5 h-3.5 text-green-600" />
@@ -328,9 +339,67 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 				</div>
 			</header>
 
-			<div className="flex flex-1 max-w-7xl mx-auto w-full px-4 py-6 gap-6">
-				{/* Left: questions / branding tabs */}
-				<div className="w-72 shrink-0 space-y-4">
+			{/* Mobile slide-down panel */}
+			{mobilePanel && (
+				<div className="lg:hidden border-b bg-white px-4 py-4 space-y-4 animate-fade-in">
+					<div className="flex rounded-lg border overflow-hidden bg-white text-sm">
+						<button
+							type="button"
+							onClick={() => setActiveTab("questions")}
+							className={cn(
+								"flex-1 flex items-center justify-center gap-1.5 py-2 transition-colors",
+								activeTab === "questions" ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+							)}
+						>
+							<LayoutGrid className="w-3.5 h-3.5" />
+							Questions
+						</button>
+						<button
+							type="button"
+							onClick={() => setActiveTab("branding")}
+							className={cn(
+								"flex-1 flex items-center justify-center gap-1.5 py-2 transition-colors",
+								activeTab === "branding" ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+							)}
+						>
+							<Paintbrush className="w-3.5 h-3.5" />
+							Branding
+						</button>
+					</div>
+					{activeTab === "questions" ? (
+						<div className="space-y-3">
+							<div className="grid grid-cols-2 gap-1.5">
+								{(
+									[
+										["short_text", "Short text"],
+										["long_text", "Long text"],
+										["multiple_choice", "Multi choice"],
+										["single_choice", "Single choice"],
+										["rating", "Rating 1–5"],
+									] as const
+								).map(([type, label]) => (
+									<button
+										key={type}
+										type="button"
+										onClick={() => { void handleAddQuestion(type); setMobilePanel(false); }}
+										className="text-xs text-left px-2.5 py-2 rounded-lg border bg-white hover:bg-muted hover:border-primary/30 transition-colors"
+									>
+										+ {label}
+									</button>
+								))}
+							</div>
+						</div>
+					) : (
+						<div className="bg-white rounded-xl border p-4">
+							<BrandingPanel survey={survey} onUpdate={(data) => void handleSurveyUpdate(data)} />
+						</div>
+					)}
+				</div>
+			)}
+
+			<div className="flex flex-1 max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 gap-6">
+				{/* Left: questions / branding tabs — desktop only */}
+				<div className="w-72 shrink-0 space-y-4 hidden lg:block">
 					{/* Tab switcher */}
 					<div className="flex rounded-lg border overflow-hidden bg-white text-sm">
 						<button
@@ -402,7 +471,7 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 				</div>
 
 				{/* Main: question cards */}
-				<div className="flex-1 min-w-0">
+				<div className="flex-1 min-w-0 w-full">
 					{questions.length === 0 ? (
 						<div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
 							<div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -454,7 +523,7 @@ export function BuilderPage({ surveyId }: BuilderPageProps) {
 					)}
 				</div>
 
-				{/* Right: live preview */}
+				{/* Right: live preview — xl only */}
 				<div className="w-72 shrink-0 hidden xl:block">
 					<div className="sticky top-20">
 						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">

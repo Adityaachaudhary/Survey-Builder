@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/useToast";
 import { type Question, type ResponsesData, type SurveyResponse, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,6 @@ import {
 	ChevronUp,
 	Circle,
 	Download,
-	Loader2,
 	Star,
 	Type,
 	Users,
@@ -135,8 +135,25 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+			<div className="min-h-screen bg-gray-50/50">
+				<header className="border-b bg-white h-14" />
+				<main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+					<div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+						{[1, 2, 3].map((i) => (
+							<div key={i} className="bg-white rounded-xl border p-4 flex items-center gap-3">
+								<Skeleton className="w-9 h-9 rounded-lg shrink-0" />
+								<div className="space-y-2 flex-1">
+									<Skeleton className="h-3 w-20" />
+									<Skeleton className="h-5 w-12" />
+								</div>
+							</div>
+						))}
+					</div>
+					<Skeleton className="h-40 w-full rounded-xl" />
+					{[1, 2, 3].map((i) => (
+						<Skeleton key={i} className="h-16 w-full rounded-xl" />
+					))}
+				</main>
 			</div>
 		);
 	}
@@ -150,7 +167,7 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 		<div className="min-h-screen bg-gray-50/50">
 			{/* Header */}
 			<header className="border-b bg-white sticky top-0 z-10">
-				<div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-3">
+				<div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
 					<Link
 						to="/dashboard"
 						className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -189,9 +206,9 @@ export function ResponsesPage({ surveyId }: ResponsesPageProps) {
 				</div>
 			</header>
 
-			<main className="max-w-5xl mx-auto px-6 py-8">
+			<main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 				{/* Stats row */}
-				<div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+				<div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
 					<StatCard
 						icon={<Users className="w-4 h-4" />}
 						label="Total responses"

@@ -3,8 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/primitives";
 import { type PublicSurveyData, type Question, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
-import { AlignLeft, CheckSquare, ChevronRight, Circle, Loader2, Star, Type } from "lucide-react";
+import { AlignLeft, CheckCircle2, CheckSquare, ChevronRight, Circle, Loader2, Star, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface PublicSurveyPageProps {
@@ -12,10 +11,10 @@ interface PublicSurveyPageProps {
 }
 
 export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
-	const navigate = useNavigate();
 	const [data, setData] = useState<PublicSurveyData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
+	const [submitted, setSubmitted] = useState(false);
 	const [answers, setAnswers] = useState<Record<string, string>>({});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [error, setError] = useState<string | null>(null);
@@ -70,7 +69,7 @@ export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
 					.filter(([, v]) => v.trim())
 					.map(([question_id, value]) => ({ question_id, value })),
 			);
-			void navigate({ to: "/s/$slug/done", params: { slug } });
+			setSubmitted(true);
 		} catch (err) {
 			setError((err as Error).message);
 		} finally {
@@ -105,6 +104,51 @@ export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
 	const { survey, questions } = data;
 	const primaryColor = survey.primary_color;
 
+	// ── Thank you screen ──────────────────────────────────────────────────────
+	if (submitted) {
+		return (
+			<div className="min-h-screen bg-gray-50 flex flex-col">
+				<div className="h-1.5 w-full" style={{ backgroundColor: primaryColor }} />
+				<div className="flex-1 flex items-center justify-center px-6">
+					<div className="text-center max-w-sm animate-fade-in">
+						<div
+							className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
+							style={{ backgroundColor: primaryColor }}
+						>
+							<CheckCircle2 className="w-8 h-8 text-white" />
+						</div>
+						<h1 className="text-2xl font-bold mb-2">Thank you!</h1>
+						<p className="text-muted-foreground text-sm leading-relaxed">
+							Your response to{" "}
+							<span className="font-medium text-foreground">{survey.title}</span>{" "}
+							has been recorded. We appreciate your time.
+						</p>
+						<button
+							type="button"
+							onClick={() => {
+								setSubmitted(false);
+								setAnswers({});
+								setErrors({});
+							}}
+							className="inline-flex items-center gap-1.5 text-sm mt-6 px-4 py-2 rounded-full border hover:bg-muted transition-colors"
+							style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+						>
+							Fill out again
+						</button>
+						{survey.logo_url && (
+							<img
+								src={survey.logo_url}
+								alt="logo"
+								className="h-7 object-contain mx-auto mt-8 opacity-60"
+							/>
+						)}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// ── Survey form ───────────────────────────────────────────────────────────
 	return (
 		<div className="min-h-screen bg-gray-50">
 			{/* Brand top bar */}
@@ -112,7 +156,7 @@ export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
 
 			{/* Header */}
 			<div className="bg-white border-b">
-				<div className="max-w-2xl mx-auto px-6 py-5">
+				<div className="max-w-2xl mx-auto px-4 sm:px-6 py-5">
 					{survey.logo_url && (
 						<img src={survey.logo_url} alt="logo" className="h-8 object-contain mb-4" />
 					)}
@@ -135,7 +179,7 @@ export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
 			</div>
 
 			{/* Form */}
-			<div className="max-w-2xl mx-auto px-6 py-8">
+			<div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 				<form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
 					{questions.map((q, idx) => (
 						<QuestionField
@@ -150,7 +194,6 @@ export function PublicSurveyPage({ slug }: PublicSurveyPageProps) {
 						/>
 					))}
 
-					{/* Submit */}
 					<div className="pt-4">
 						<Button
 							type="submit"
@@ -227,7 +270,6 @@ function QuestionField({
 				</div>
 			</div>
 
-			{/* Input */}
 			{question.type === "short_text" && (
 				<Input
 					value={value}
@@ -260,34 +302,18 @@ function QuestionField({
 									"w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm text-left transition-all",
 									checked ? "border-2" : "border hover:bg-muted/50",
 								)}
-								style={
-									checked ? { borderColor: primaryColor, backgroundColor: `${primaryColor}10` } : {}
-								}
+								style={checked ? { borderColor: primaryColor, backgroundColor: `${primaryColor}10` } : {}}
 							>
 								<span
 									className={cn(
 										"w-4 h-4 rounded shrink-0 border-2 flex items-center justify-center transition-colors",
 										checked ? "text-white" : "border-muted-foreground/40",
 									)}
-									style={
-										checked ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}
-									}
+									style={checked ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
 								>
 									{checked && (
-										<svg
-											viewBox="0 0 12 12"
-											className="w-2.5 h-2.5"
-											fill="currentColor"
-											aria-hidden="true"
-										>
-											<path
-												d="M10 3L5 8.5 2 5.5"
-												stroke="white"
-												strokeWidth="1.5"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												fill="none"
-											/>
+										<svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="currentColor" aria-hidden="true">
+											<path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
 										</svg>
 									)}
 								</span>
@@ -311,11 +337,7 @@ function QuestionField({
 									"w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm text-left transition-all",
 									selected ? "border-2" : "border hover:bg-muted/50",
 								)}
-								style={
-									selected
-										? { borderColor: primaryColor, backgroundColor: `${primaryColor}10` }
-										: {}
-								}
+								style={selected ? { borderColor: primaryColor, backgroundColor: `${primaryColor}10` } : {}}
 							>
 								<span
 									className={cn(
@@ -325,10 +347,7 @@ function QuestionField({
 									style={selected ? { borderColor: primaryColor } : {}}
 								>
 									{selected && (
-										<span
-											className="w-2 h-2 rounded-full"
-											style={{ backgroundColor: primaryColor }}
-										/>
+										<span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
 									)}
 								</span>
 								{opt}
@@ -349,9 +368,7 @@ function QuestionField({
 								onClick={() => onChange(String(n))}
 								className={cn(
 									"w-12 h-12 rounded-xl border-2 font-semibold text-sm transition-all hover:scale-105",
-									selected
-										? "text-white scale-105 shadow-md"
-										: "text-muted-foreground hover:border-gray-300",
+									selected ? "text-white scale-105 shadow-md" : "text-muted-foreground hover:border-gray-300",
 								)}
 								style={selected ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
 							>

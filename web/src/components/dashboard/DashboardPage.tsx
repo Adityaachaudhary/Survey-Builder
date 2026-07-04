@@ -16,9 +16,10 @@ import { type SurveyWithCount, api } from "@/lib/api";
 import { Link } from "@tanstack/react-router";
 import {
 	BarChart2,
+	Check,
 	ChevronRight,
+	Copy,
 	ExternalLink,
-	FileText,
 	LayoutGrid,
 	Loader2,
 	LogOut,
@@ -36,6 +37,13 @@ export function DashboardPage() {
 	const [newSurveyTitle, setNewSurveyTitle] = useState("");
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
+
+	const copyLink = async (slug: string, id: string) => {
+		await navigator.clipboard.writeText(`${window.location.origin}/s/${slug}`);
+		setCopiedId(id);
+		setTimeout(() => setCopiedId(null), 2000);
+	};
 
 	const fetchSurveys = useCallback(async () => {
 		try {
@@ -96,7 +104,7 @@ export function DashboardPage() {
 		<div className="min-h-screen bg-gray-50/50">
 			{/* Header */}
 			<header className="border-b bg-white sticky top-0 z-10">
-				<div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+				<div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<div className="w-7 h-7 bg-primary/10 rounded-md flex items-center justify-center">
 							<LayoutGrid className="w-3.5 h-3.5 text-primary" />
@@ -114,7 +122,7 @@ export function DashboardPage() {
 				</div>
 			</header>
 
-			<main className="max-w-5xl mx-auto px-6 py-10">
+			<main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 				{/* Page header */}
 				<div className="flex items-center justify-between mb-8">
 					<div>
@@ -204,6 +212,18 @@ export function DashboardPage() {
 
 										{/* Actions */}
 										<div className="flex items-center gap-1 transition-opacity">
+											<button
+												type="button"
+												onClick={() => void copyLink(survey.slug, survey.id)}
+												className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+												title="Copy survey link"
+											>
+												{copiedId === survey.id ? (
+													<Check className="w-3.5 h-3.5 text-green-600" />
+												) : (
+													<Copy className="w-3.5 h-3.5 text-muted-foreground" />
+												)}
+											</button>
 											<a
 												href={`/s/${survey.slug}`}
 												target="_blank"

@@ -54,7 +54,7 @@ export function LoginPage() {
 	return (
 		<div className="min-h-screen flex">
 			{/* Left — brand panel */}
-			<div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 flex-col justify-between p-12 text-white">
+			<div className="hidden lg:flex lg:w-1/2 bg-gray-900 flex-col justify-between p-12 text-white">
 				<div className="flex items-center gap-3">
 					<div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
 						<LayoutGrid className="w-4 h-4" />
@@ -90,6 +90,19 @@ export function LoginPage() {
 							<LayoutGrid className="w-4 h-4 text-primary" />
 						</div>
 						<span className="font-semibold text-lg">Survey Builder</span>
+					</div>
+
+					{/* Step indicator */}
+					<div className="flex items-center gap-2 mb-8">
+						<div className="flex items-center gap-1.5">
+							<div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</div>
+							<span className={`text-xs font-medium ${step === "email" ? "text-foreground" : "text-muted-foreground"}`}>Email</span>
+						</div>
+						<div className={`flex-1 h-px ${step === "otp" ? "bg-primary" : "bg-border"} transition-colors duration-300`} />
+						<div className="flex items-center gap-1.5">
+							<div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors duration-300 ${ step === "otp" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground" }`}>2</div>
+							<span className={`text-xs font-medium ${step === "otp" ? "text-foreground" : "text-muted-foreground"}`}>Verify</span>
+						</div>
 					</div>
 
 					{step === "email" ? (

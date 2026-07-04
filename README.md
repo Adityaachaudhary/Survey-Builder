@@ -48,6 +48,70 @@ Built with Hono on Cloudflare Workers, React + Vite + TanStack Router, and Cloud
 
 ---
 
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Browser (Client)                         │
+│                                                                 │
+│   React 18 + Vite + TanStack Router                            │
+│   ┌──────────┐  ┌───────────┐  ┌──────────┐  ┌─────────────┐  │
+│   │ /login   │  │/dashboard │  │/builder  │  │ /s/:slug    │  │
+│   │ OTP form │  │survey list│  │DnD cards │  │ public form │  │
+│   └──────────┘  └───────────┘  └──────────┘  └─────────────┘  │
+│                        │  fetch /api/*                          │
+└────────────────────────┼────────────────────────────────────────┘
+                         │  HTTP (proxied in dev, direct in prod)
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Cloudflare Workers (Edge — global PoPs)            │
+│                                                                 │
+│   Hono app  ─── CORS + logger middleware                        │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│   │ /api/auth/*  │  │/api/surveys/*│  │   /api/s/:slug/*     │ │
+│   │ send-otp     │  │ CRUD + reorder│  │ public fetch+respond │ │
+│   │ verify-otp   │  │ questions    │  │ responses viewer     │ │
+│   │ me / logout  │  └──────┬───────┘  └──────────┬───────────┘ │
+│   └──────┬───────┘         │                     │             │
+│          │                 │                     │             │
+│   ┌──────▼───────┐  ┌──────▼─────────────────────▼───────────┐ │
+│   │ Cloudflare   │  │         Cloudflare D1 (SQLite)          │ │
+│   │     KV       │  │                                         │ │
+│   │              │  │  users ──< surveys ──< questions        │ │
+│   │ session_id   │  │  responses ──< answers                  │ │
+│   │  → user_id   │  │                                         │ │
+│   │  (30d TTL)   │  │  db.batch() for atomic multi-row writes │ │
+│   └──────────────┘  └─────────────────────────────────────────┘ │
+│          │                                                      │
+│   ┌──────▼───────┐                                              │
+│   │    Resend    │  (external — OTP email delivery only)        │
+│   └──────────────┘                                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Request flows
+
+**Auth (sign in)**
+```
+Browser → POST /api/auth/send-otp → Worker → Resend API (email OTP)
+Browser → POST /api/auth/verify-otp → Worker → KV.put(session_id, user_id, ttl=30d)
+                                             → Set-Cookie: session_id (HttpOnly)
+```
+
+**Authenticated request**
+```
+Browser (cookie) → Worker → auth middleware → KV.get(session_id) → user_id
+                                           → D1 query → JSON response
+```
+
+**Public survey submission**
+```
+Browser → GET /api/s/:slug → D1 (survey + questions) → JSON
+Browser → POST /api/s/:slug/respond → D1.batch([INSERT response, INSERT answers...])
+```
+
+---
+
 ## Architecture Decisions
 
 ### Why email OTP over OAuth?
@@ -343,26 +407,3 @@ npx wrangler pages deploy web/dist --project-name survey-builder-web
 Update `FRONTEND_URL` in `api/wrangler.jsonc` to your Pages URL before deploying the API.
 
 ---
-
-## AI Tools Used
-
-This project was built with Claude (Anthropic) as the primary AI assistant.
-
-**Where AI helped:**
-- Scaffolding the initial file structure and boilerplate
-- Writing the D1 query helpers and TypeScript generics
-- shadcn/ui component setup
-- Debugging TypeScript errors across the workspace
-
-**Where I had to understand and own it:**
-- All architecture decisions (D1 vs KV, OTP vs OAuth, dnd-kit choice)
-- Debugging the Biome linting pass — understanding each rule and why it fired
-- The `.dev.vars` local secrets setup — not in the generated code, figured out from wrangler docs
-- Fixing the `pnpm approve-builds` issue on Windows
-- Understanding every route, every query, every component — required since the interview will ask
-
-Every file in this repo has been read, understood, and is defensible line by line.
-
----
-
-
